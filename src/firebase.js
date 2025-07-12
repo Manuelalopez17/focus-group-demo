@@ -1,19 +1,21 @@
+// Importa solo lo necesario desde el SDK de Firebase
 import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
 
-// Configuración de Firebase (ya tienes estos datos)
+// Configuración del nuevo proyecto en Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyD6UBfFDStFxtMI8WlnLnfylRcOE3r2iD0",
-  authDomain: "focus-group-94efa.firebaseapp.com",
-  databaseURL: "https://focus-group-94efa-default-rtdb.firebaseio.com",
-  projectId: "focus-group-94efa",
-  storageBucket: "focus-group-94efa.appspot.com",
-  messagingSenderId: "253127150127",
-  appId: "1:253127150127:web:1298b29b5969dd4ee054da"
+  apiKey: "AIzaSyAfAryg3eYLqj5Md0odrpckLrhPcVm510w",
+  authDomain: "focus-group-riesgos-5353a.firebaseapp.com",
+  projectId: "focus-group-riesgos-5353a",
+  storageBucket: "focus-group-riesgos-5353a.appspot.com",
+  messagingSenderId: "932406132125",
+  appId: "1:932406132125:web:a9b2f9322a4ee8fe620374",
+  measurementId: "G-PSY2R8BDTN",
+  databaseURL: "https://focus-group-riesgos-5353a-default-rtdb.firebaseio.com",
 };
 
-// Inicializar Firebase
+// Inicializa Firebase
 const app = initializeApp(firebaseConfig);
 
-// Exportar la instancia de Realtime Database
+// Exporta la base de datos para usarla en otros componentes
 export const database = getDatabase(app);
