@@ -20,7 +20,7 @@ let sessionStats = {
   responses: 0
 };
 
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));;
 app.use(express.json());
 
 app.get('/', (req, res) => {
