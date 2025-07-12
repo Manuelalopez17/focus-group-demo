@@ -20,21 +20,24 @@ let sessionStats = {
   responses: 0
 };
 
-app.use(express.static(path.join(__dirname, 'public')));;
+// Middleware - CORREGIDO: eliminado punto y coma doble
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
+// Rutas principales - MEJORADO: usando path.resolve para mayor robustez
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.resolve(__dirname, 'public', 'index.html'));
 });
 
 app.get('/admin/:sessionId', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+  res.sendFile(path.resolve(__dirname, 'public', 'admin.html'));
 });
 
 app.get('/session/:sessionId', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'participant.html'));
+  res.sendFile(path.resolve(__dirname, 'public', 'participant.html'));
 });
 
+// Socket.IO - Manejo de conexiones en tiempo real
 io.on('connection', (socket) => {
   console.log(`Usuario conectado: ${socket.id}`);
   
@@ -59,6 +62,7 @@ io.on('connection', (socket) => {
     });
     
     socket.emit('matrix-update', riskMatrix);
+    console.log(`Usuario ${socket.id} se unió a sesión ${sessionId} como ${userType}`);
   });
   
   socket.on('matrix-selection', (data) => {
@@ -77,6 +81,8 @@ io.on('connection', (socket) => {
     
     io.to(sessionId).emit('matrix-update', riskMatrix);
     io.to(sessionId).emit('stats-update', sessionStats);
+    
+    console.log(`Matriz actualizada: ${key} = ${value} por usuario ${userId}`);
   });
   
   socket.on('disconnect', () => {
@@ -91,10 +97,13 @@ io.on('connection', (socket) => {
         connectedUsers: Array.from(connectedUsers.values()).filter(u => u.sessionId === user.sessionId)
       });
     }
+    console.log(`Usuario desconectado: ${socket.id}`);
   });
 });
 
-const PORT = process.env.PORT || 3000;
+// CORREGIDO: Puerto para Render (process.env.PORT tiene prioridad)
+const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  console.log(`📱 URL base: ${process.env.RENDER_EXTERNAL_URL || 'http://localhost:' + PORT}`);
 });
