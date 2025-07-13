@@ -1,5 +1,3 @@
-// pages/admin/[stage].js
-
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { database } from '@/firebase';
@@ -117,3 +115,4 @@ export default function AdminPanel() {
     </div>
   );
 }
+
