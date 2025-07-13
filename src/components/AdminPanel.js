@@ -1,94 +1,119 @@
-import React, { useEffect, useState } from "react";
-import { ref, onValue } from "firebase/database";
-import { database } from "../firebase";
+// pages/admin/[stage].js
 
-function AdminPanel() {
-  const [datos, setDatos] = useState([]);
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
+import { database } from '@/firebase';
+import { onValue, ref } from 'firebase/database';
+
+export default function AdminPanel() {
+  const router = useRouter();
+  const { stage } = router.query;
+  const [data, setData] = useState([]);
+  const [summary, setSummary] = useState({});
 
   useEffect(() => {
-    const dbRef = ref(database);
-    onValue(dbRef, (snapshot) => {
-      const data = snapshot.val();
-      const resultados = [];
+    if (!stage) return;
 
-      for (const etapa in data) {
-        for (const riesgoId in data[etapa]) {
-          const evaluaciones = Object.values(data[etapa][riesgoId]);
-          const total = evaluaciones.length;
+    const stageRef = ref(database, `respuestas/${stage}`);
 
-          const acumulado = evaluaciones.reduce(
-            (acc, val) => {
-              const scoreBase = val.impacto * val.frecuencia;
-              acc.impacto += val.impacto;
-              acc.frecuencia += val.frecuencia;
-              acc.scoreBase += scoreBase;
-              acc.scoreFinal += scoreBase * (val.importancia / 5);
-              acc.timestamps.push(val.timestamp);
-              return acc;
-            },
-            {
-              impacto: 0,
-              frecuencia: 0,
-              scoreBase: 0,
-              scoreFinal: 0,
-              timestamps: [],
-            }
-          );
-
-          resultados.push({
-            etapa,
-            riesgo: riesgoId,
-            impacto: (acumulado.impacto / total).toFixed(2),
-            frecuencia: (acumulado.frecuencia / total).toFixed(2),
-            scoreBase: (acumulado.scoreBase / total).toFixed(2),
-            scoreFinal: (acumulado.scoreFinal / total).toFixed(2),
-            totalEvaluaciones: total,
-            ultimoTimestamp: new Date(
-              Math.max(...acumulado.timestamps)
-            ).toLocaleString(),
-          });
-        }
+    const unsubscribe = onValue(stageRef, (snapshot) => {
+      const values = snapshot.val();
+      if (!values) {
+        setData([]);
+        setSummary({});
+        return;
       }
 
-      // Ordenar por score base descendente
-      resultados.sort((a, b) => b.scoreBase - a.scoreBase);
-      setDatos(resultados);
+      const consolidated = {};
+
+      Object.values(values).forEach((userResponse) => {
+        Object.entries(userResponse).forEach(([riskId, r]) => {
+          if (!consolidated[riskId]) {
+            consolidated[riskId] = {
+              etapa: stage,
+              riesgo: riskId,
+              totalImpacto: 0,
+              totalFrecuencia: 0,
+              totalImportancia: 0,
+              count: 0,
+              timestamp: '',
+            };
+          }
+
+          consolidated[riskId].totalImpacto += r.impacto;
+          consolidated[riskId].totalFrecuencia += r.frecuencia;
+          consolidated[riskId].totalImportancia += r.importancia;
+          consolidated[riskId].count++;
+          consolidated[riskId].timestamp = r.timestamp;
+        });
+      });
+
+      const rows = Object.values(consolidated).map((item) => {
+        const promImpacto = item.totalImpacto / item.count;
+        const promFrecuencia = item.totalFrecuencia / item.count;
+        const promImportancia = item.totalImportancia / item.count;
+        const scoreBase = promImpacto * promFrecuencia;
+        const scoreFinal = scoreBase * (promImportancia / 5);
+
+        return {
+          etapa: item.etapa,
+          riesgo: item.riesgo,
+          promImpacto: promImpacto.toFixed(2),
+          promFrecuencia: promFrecuencia.toFixed(2),
+          scoreBase: scoreBase.toFixed(2),
+          scoreFinal: scoreFinal.toFixed(2),
+          count: item.count,
+          timestamp: item.timestamp,
+        };
+      });
+
+      rows.sort((a, b) => b.scoreBase - a.scoreBase);
+
+      setData(rows);
+      setSummary({ total: rows.length });
     });
-  }, []);
+
+    return () => unsubscribe();
+  }, [stage]);
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div style={{ padding: '20px' }}>
       <h2>📊 Panel del Administrador - Riesgos Priorizados</h2>
-      <table border="1" cellPadding="10">
-        <thead>
-          <tr>
-            <th>Etapa</th>
-            <th>Riesgo</th>
-            <th>Prom. Impacto</th>
-            <th>Prom. Frecuencia</th>
-            <th>Score Base</th>
-            <th>Score Final Ajustado</th>
-            <th>N° Evaluaciones</th>
-            <th>Última Actualización</th>
-          </tr>
-        </thead>
-        <tbody>
-          {datos.map((r, i) => (
-            <tr key={i}>
-              <td>{r.etapa}</td>
-              <td>{r.riesgo}</td>
-              <td>{r.impacto}</td>
-              <td>{r.frecuencia}</td>
-              <td>{r.scoreBase}</td>
-              <td>{r.scoreFinal}</td>
-              <td>{r.totalEvaluaciones}</td>
-              <td>{r.ultimoTimestamp}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+
+      {summary.total > 0 ? (
+        <>
+          <table border="1" cellPadding="5" style={{ marginTop: '20px' }}>
+            <thead>
+              <tr>
+                <th>Etapa</th>
+                <th>Riesgo</th>
+                <th>Prom. Impacto</th>
+                <th>Prom. Frecuencia</th>
+                <th>Score Base</th>
+                <th>Score Final Ajustado</th>
+                <th>Nº Evaluaciones</th>
+                <th>Última Actualización</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.etapa}</td>
+                  <td>{item.riesgo}</td>
+                  <td>{item.promImpacto}</td>
+                  <td>{item.promFrecuencia}</td>
+                  <td>{item.scoreBase}</td>
+                  <td>{item.scoreFinal}</td>
+                  <td>{item.count}</td>
+                  <td>{item.timestamp}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      ) : (
+        <p>No hay datos disponibles para esta etapa.</p>
+      )}
     </div>
   );
 }
-
-export default AdminPanel;
